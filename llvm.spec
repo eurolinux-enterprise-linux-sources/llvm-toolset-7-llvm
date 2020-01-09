@@ -9,8 +9,8 @@
 %endif
 
 Name:		%{?scl_prefix}llvm
-Version:	4.0.0
-Release:	5%{?dist}
+Version:	4.0.1
+Release:	3%{?dist}
 Summary:	The Low Level Virtual Machine
 
 License:	NCSA
@@ -19,12 +19,6 @@ Source0:	http://llvm.org/releases/%{version}/%{pkg_name}-%{version}.src.tar.xz
 
 # recognize s390 as SystemZ when configuring build
 Patch0:		llvm-3.7.1-cmake-s390.patch
-Patch1:		0001-CMake-Fix-pthread-handling-for-out-of-tree-builds.patch
-
-BuildRequires:	devtoolset-7-gcc
-BuildRequires:	devtoolset-7-gcc-c++
-BuildRequires:	python27
-BuildRequires:	libffi-headers
 
 BuildRequires:	%{?scl_prefix}cmake
 BuildRequires:	%{?scl_prefix}cmake-data
@@ -32,9 +26,6 @@ BuildRequires:	zlib-devel
 BuildRequires:  libffi-devel
 BuildRequires:	ncurses-devel
 BuildRequires:	python-sphinx
-
-# for the cmake macro
-BuildRequires:	cmake
 
 %if %{with gold}
 BuildRequires:  binutils-devel
@@ -52,6 +43,7 @@ tools as well as libraries with equivalent functionality.
 %package devel
 Summary:	Libraries and header files for LLVM
 Requires:	%{?scl_prefix}%{pkg_name}%{?_isa} = %{version}-%{release}
+Requires: 	%{?scl_prefix}%{pkg_name}-libs = %{version}-%{release}
 
 %description devel
 This package contains library and header files needed to develop new native
@@ -88,9 +80,6 @@ for f in `grep -Rl 'XFAIL.\+arm' test/ExecutionEngine `; do  rm $f; done
 %endif
 
 %build
-%{?scl:scl enable devtoolset-7 python27 - << \EOF}
-set -ex
-
 mkdir -p _build
 cd _build
 
@@ -106,7 +95,7 @@ cd _build
 %cmake .. \
 	-DBUILD_SHARED_LIBS:BOOL=OFF \
 	-DCMAKE_BUILD_TYPE=RelWithDebInfo \
-	-DCMAKE_SHARED_LINKER_FLAGS="-Wl,-Bsymbolic" \
+	-DCMAKE_SHARED_LINKER_FLAGS="-Wl,-Bsymbolic -static-libstdc++" \
 %ifarch s390
 	-DCMAKE_C_FLAGS_RELWITHDEBINFO="%{optflags} -DNDEBUG" \
 	-DCMAKE_CXX_FLAGS_RELWITHDEBINFO="%{optflags} -DNDEBUG" \
@@ -155,9 +144,6 @@ cd _build
 
 make %{?_smp_mflags}
 
-%{?scl:EOF}
-
-
 %install
 echo %{buildroot}
 cd _build
@@ -200,6 +186,15 @@ make check-all || :
 %{_libdir}/*.a
 
 %changelog
+* Thu Jun 22 2017 Tom Stellard <tstellar@redhat.com> - 4.0.1-3
+- Fix Requires for devel package again.
+
+* Thu Jun 22 2017 Tom Stellard <tstellar@redhat.com> - 4.0.1-2
+- Fix Requires for llvm-devel
+
+* Tue Jun 20 2017 Tom Stellard <tstellar@redhat.com> - 4.0.1-1
+- 4.0.1 Release
+
 * Mon Jun 05 2017 Tom Stellard <tstellar@redhat.com> - 4.0.0-5
 - Build for llvm-toolset-7 rename
 
