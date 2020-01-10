@@ -8,9 +8,13 @@
   %bcond_with gold
 %endif
 
+%global maj_ver 5
+%global min_ver 0
+%global patch_ver 1
+
 Name:		%{?scl_prefix}llvm
-Version:	4.0.1
-Release:	3%{?dist}
+Version:	%{maj_ver}.%{min_ver}.%{patch_ver}
+Release:	8%{?dist}
 Summary:	The Low Level Virtual Machine
 
 License:	NCSA
@@ -19,6 +23,20 @@ Source0:	http://llvm.org/releases/%{version}/%{pkg_name}-%{version}.src.tar.xz
 
 # recognize s390 as SystemZ when configuring build
 Patch0:		llvm-3.7.1-cmake-s390.patch
+Patch1:		0001-PowerPC-Don-t-use-xscvdpspn-on-the-P7.patch
+Patch2:		0001-Ignore-all-duplicate-frame-index-expression.patch
+Patch3:		0002-Reinstantiate-old-bad-deduplication-logic-that-was-r.patch
+# Retpoline Patches
+Patch4:		0001-Merging-r323155.patch
+Patch5:		0001-Merging-r323915.patch
+Patch6:		0001-Merging-r324449.patch
+Patch7:		0002-Merging-r324645.patch
+Patch8:		0003-Merging-r325049.patch
+Patch9:		0004-Merging-r325085.patch
+# Backport from trunk for rhbz#1550469
+Patch10:        0001-ExecutionEngine-add-R_AARCH64_ABS-16-3.patch
+# Backport from trunk for rhbz#1558226
+Patch11:        0001-PPC-Avoid-non-simple-MVT-in-STBRX-optimization.patch
 
 BuildRequires:	%{?scl_prefix}cmake
 BuildRequires:	%{?scl_prefix}cmake-data
@@ -83,7 +101,7 @@ for f in `grep -Rl 'XFAIL.\+arm' test/ExecutionEngine `; do  rm $f; done
 mkdir -p _build
 cd _build
 
-%ifarch s390
+%ifarch s390 s390x
 # Decrease debuginfo verbosity to reduce memory consumption during final library linking
 %global optflags %(echo %{optflags} | sed 's/-g /-g1 /')
 %endif
@@ -96,7 +114,7 @@ cd _build
 	-DBUILD_SHARED_LIBS:BOOL=OFF \
 	-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 	-DCMAKE_SHARED_LINKER_FLAGS="-Wl,-Bsymbolic -static-libstdc++" \
-%ifarch s390
+%ifarch s390 s390x
 	-DCMAKE_C_FLAGS_RELWITHDEBINFO="%{optflags} -DNDEBUG" \
 	-DCMAKE_CXX_FLAGS_RELWITHDEBINFO="%{optflags} -DNDEBUG" \
 %endif
@@ -161,6 +179,7 @@ make check-all || :
 %{_mandir}/man1/*.1.*
 %exclude %{_bindir}/llvm-config
 %exclude %{_mandir}/man1/llvm-config.1.*
+%{_datadir}/opt-viewer
 
 %files libs
 %{_libdir}/BugpointPasses.so
@@ -168,7 +187,7 @@ make check-all || :
 %if %{with gold}
 %{_libdir}/LLVMgold.so
 %endif
-%{_libdir}/libLLVM-4.0*.so
+%{_libdir}/libLLVM-%{maj_ver}.%{min_ver}*.so
 %{_libdir}/libLTO.so*
 
 %files devel
@@ -186,6 +205,30 @@ make check-all || :
 %{_libdir}/*.a
 
 %changelog
+* Tue Mar 20 2018 Tilmann Scheller <tschelle@redhat.com> - 5.0.1-8
+- Backport fix for rhbz#1558226 from trunk
+
+* Tue Mar 06 2018 Tilmann Scheller <tschelle@redhat.com> - 5.0.1-7
+- Backport fix for rhbz#1550469 from trunk
+
+* Thu Feb 22 2018 Tom Stellard <tstellar@redhat.com> - 5.0.1-6
+- Backport some retpoline fixes
+
+* Tue Feb 06 2018 Tom Stellard <tstellar@redhat.com> - 5.0.1-5
+- Backport retpoline support
+
+* Mon Jan 29 2018 Tom Stellard <tstellar@redhat.com> - 5.0.1-4
+- Backport r315279 to fix an issue with rust
+
+* Mon Jan 15 2018 Tom Stellard - 5.0.1-3
+- Decrease debuginfo size on s390x to avoid OOM errors
+
+* Mon Jan 15 2018 Tom Stellard - 5.0.1-2
+- Rebuild for i686
+
+* Mon Jan 08 2018 Tom Stellard <tstellar@redhat.com> - 5.0.1-1
+- 5.0.1 Release
+
 * Thu Jun 22 2017 Tom Stellard <tstellar@redhat.com> - 4.0.1-3
 - Fix Requires for devel package again.
 
